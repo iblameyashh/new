@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fcfbf7;
+  --text-main: #18181b;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --accent-gold: #d97706;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f172a;
+    --text-main: #f8fafc;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Accessible focus ring style */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
