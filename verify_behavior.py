@@ -4,13 +4,26 @@ Drives the real API end-to-end with plain urllib and ASSERTS state transitions.
 Exits non-zero on any failure.
 """
 import json
+import os
 import time
 import urllib.request
 import urllib.error
 import sys
 
 BASE = "http://127.0.0.1:8000"
-CODE = "e2e-test-secret-9876"
+CODE = os.environ.get('ADMIN_SETUP_CODE', '')
+if not CODE:
+    # Fall back to the local backend/.env so no secret lives in this file.
+    _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'backend', '.env')
+    if os.path.exists(_env_path):
+        with open(_env_path, encoding='utf-8') as _f:
+            for _line in _f:
+                if _line.strip().startswith('ADMIN_SETUP_CODE='):
+                    CODE = _line.split('=', 1)[1].strip()
+                    break
+if not CODE:
+    print('SKIP: set ADMIN_SETUP_CODE (env or backend/.env) to run the admin-setup checks.')
+    sys.exit(2)
 results = []
 UNIQ = str(int(time.time()))  # unique per run so re-runs aren't polluted
 
