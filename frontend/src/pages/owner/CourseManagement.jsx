@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 export default function OwnerCourses() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,10 +16,6 @@ export default function OwnerCourses() {
   const [subjects, setSubjects] = useState([]);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
 
     const loadData = async () => {
       try {
@@ -44,7 +38,7 @@ export default function OwnerCourses() {
     };
 
     loadData();
-  }, [user, navigate]);
+  }, []);
 
   const filteredCourses = courses.filter(course => {
     if (filters.search) {
@@ -99,10 +93,6 @@ export default function OwnerCourses() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading courses...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">

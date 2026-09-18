@@ -1,18 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
 
 export default function OwnerAnalytics() {
-  const { user } = useAuth();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('month'); // week, month, year, all
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      // Redirect handled by parent route
-      return;
-    }
 
     const loadAnalytics = async () => {
       try {
@@ -26,15 +20,12 @@ export default function OwnerAnalytics() {
     };
 
     loadAnalytics();
-  }, [user, timeRange]);
+  }, [timeRange]);
 
   if (loading) {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading analytics...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    return null; // Redirect handled by parent route
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">

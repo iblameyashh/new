@@ -43,10 +43,6 @@ export default function TeacherStudentProfile() {
 
   useEffect(() => {
     const loadStudentData = async () => {
-      if (!user || user.role !== 'TEACHER') {
-        navigate('/');
-        return;
-      }
 
       try {
         // Load student profile

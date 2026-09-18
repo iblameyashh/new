@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
 import { ArrowLeft, CheckCircle, XCircle, PauseCircle, User, Calendar, Clock, AlertCircle, CheckCircle2, RefreshCw, Loader2 } from 'lucide-react';
 
@@ -31,7 +30,6 @@ const ACTION_OPTIONS = [
 ];
 
 export default function OwnerRequirementDetail() {
-  const { user } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   const [requirement, setRequirement] = useState(null);
@@ -66,13 +64,9 @@ export default function OwnerRequirementDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
     loadRequirement();
     loadTeachers();
-  }, [user, navigate, loadRequirement, loadTeachers]);
+  }, [loadRequirement, loadTeachers]);
 
   const handleAction = async (e) => {
     e.preventDefault();
@@ -95,7 +89,10 @@ export default function OwnerRequirementDetail() {
         teacher_id: parseInt(selectedTeacherId) || undefined,
         action: selectedAction,
       });
-      setSuccess(`Requirement ${selectedAction}d successfully!`);
+      const verb = selectedAction === 'approve' ? 'approved'
+        : selectedAction === 'reassign' ? 'reassigned'
+        : `${selectedAction}ed`;
+      setSuccess(`Requirement ${verb} successfully!`);
       loadRequirement();
       loadTeachers();
       setSelectedAction('');

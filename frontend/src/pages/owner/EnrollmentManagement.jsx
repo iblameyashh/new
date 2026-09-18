@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 export default function OwnerEnrollments() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,10 +16,6 @@ export default function OwnerEnrollments() {
   const [students, setStudents] = useState([]);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
 
     const loadData = async () => {
       try {
@@ -44,23 +38,25 @@ export default function OwnerEnrollments() {
     };
 
     loadData();
-  }, [user, navigate]);
+  }, []);
 
   const filteredEnrollments = enrollments.filter(enrollment => {
+    const studentUser = enrollment.student?.user || {};
+    const course = enrollment.course || {};
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      const matchesStudent = enrollment.student.user.first_name.toLowerCase().includes(searchTerm) ||
-                           enrollment.student.user.last_name.toLowerCase().includes(searchTerm) ||
-                           enrollment.student.student_id.toLowerCase().includes(searchTerm);
-      const matchesCourse = enrollment.course.title.toLowerCase().includes(searchTerm);
+      const matchesStudent = (studentUser.first_name || '').toLowerCase().includes(searchTerm) ||
+                           (studentUser.last_name || '').toLowerCase().includes(searchTerm) ||
+                           (enrollment.student?.student_id || '').toLowerCase().includes(searchTerm);
+      const matchesCourse = (course.title || '').toLowerCase().includes(searchTerm);
       if (!matchesStudent && !matchesCourse) return false;
     }
 
-    if (filters.course && enrollment.course.id !== parseInt(filters.course)) {
+    if (filters.course && course.id !== parseInt(filters.course)) {
       return false;
     }
 
-    if (filters.student && enrollment.student.id !== parseInt(filters.student)) {
+    if (filters.student && enrollment.student?.id !== parseInt(filters.student)) {
       return false;
     }
 
@@ -101,10 +97,6 @@ export default function OwnerEnrollments() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading enrollments...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">

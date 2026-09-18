@@ -43,12 +43,23 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ),
+    'DEFAULT_THROTTLE_RATES': {
+        # Brute-force protection: 10 login attempts / hour / IP
+        'login': '10/hour',
+    },
 }
+
+# --- Owner / admin bootstrap -------------------------------------------------
+# Paste a long random code here (see .env.example). It is the only way to claim
+# admin on the site; it is never sent to any browser.
+ADMIN_SETUP_CODE = os.getenv('ADMIN_SETUP_CODE', '')
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_HEADER_TYPES': ('Bearer',),
+    # Keep last_login fresh so stale sessions are visible server-side.
+    'UPDATE_LAST_LOGIN': True,
 }
 
 CORS_ALLOWED_ORIGINS = [
@@ -152,3 +163,11 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() == 'true'
+elif SECRET_KEY == 'dev-only-change-me':
+    import warnings
+
+    warnings.warn(
+        'Using the default development SECRET_KEY. Set SECRET_KEY in backend/.env.',
+        stacklevel=1,
+    )
