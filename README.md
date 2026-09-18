@@ -30,9 +30,9 @@ code that lives only on the server:
    ```
    ADMIN_SETUP_CODE=paste-a-long-random-secret-code-here
    ```
-   (or run `python seed.py` to create the account `admin@learnique.com` /
-   `ChangeMe-1234!` — **edit the two ADMIN_ lines at the top of seed.py and
-   delete them after running**, so credentials never stay in the repo).
+   (or run `python seed.py` after setting `ADMIN_SEED_EMAIL` and
+   `ADMIN_SEED_PASSWORD` in backend/.env — the script reads credentials from
+   .env, never from hardcoded values in the file, so nothing enters git).
 2. Start the backend, then visit **`/admin-setup`** on the website
    (e.g. `http://localhost:5173/admin-setup`). The page is hidden — not linked
    in any menu.
