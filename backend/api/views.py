@@ -26,9 +26,24 @@ from .serializers import (
 
 
 class LoginThrottleView(TokenObtainPairView):
-    """Login endpoint with per-IP brute-force throttling (rate set in settings)."""
+    """Login endpoint with per-IP brute-force throttling (rate set in settings).
+
+    Translates the low-level DRF throttle detail into a plain, honest
+    message so a locked-out user isn't left guessing what "2669 seconds"
+    means.
+    """
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'login'
+
+    def throttled(self, request, wait):
+        from rest_framework.exceptions import Throttled
+        minutes = max(1, int(wait // 60) + (1 if wait % 60 else 0))
+        raise Throttled(detail={
+            'error': (
+                f'Too many login attempts from this network. '
+                f'Try again in about {minutes} minute' + ('s' if minutes != 1 else '') + '.'
+            )
+        })
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):

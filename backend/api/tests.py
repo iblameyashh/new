@@ -122,6 +122,60 @@ class BackendApiTests(TestCase):
         self.assertEqual(res_close.data['status'], 'COMPLETED')
 
 
+class LoginFlowTests(TestCase):
+    """Login must work by email even when username != email, and throttle
+    lockouts must show a human-friendly message."""
+
+    def setUp(self):
+        self.client = APIClient()
+        cache.clear()
+
+    def test_login_with_email_when_username_differs(self):
+        User.objects.create_user(
+            username='john_math', email='john@learnique.edu',
+            password='teachpass123', role='TEACHER',
+        )
+        res = self.client.post('/api/auth/login/', {
+            'username': 'john@learnique.edu', 'password': 'teachpass123',
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('access', res.data)
+
+    def test_login_still_works_with_username(self):
+        User.objects.create_user(
+            username='john_math', email='john@learnique.edu',
+            password='teachpass123', role='TEACHER',
+        )
+        res = self.client.post('/api/auth/login/', {
+            'username': 'john_math', 'password': 'teachpass123',
+        })
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_wrong_password_still_rejected_for_email_login(self):
+        User.objects.create_user(
+            username='john_math', email='john@learnique.edu',
+            password='teachpass123', role='TEACHER',
+        )
+        res = self.client.post('/api/auth/login/', {
+            'username': 'john@learnique.edu', 'password': 'wrongpass123',
+        })
+        self.assertEqual(res.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_throttled_login_shows_friendly_message(self):
+        User.objects.create_user(
+            username='guinea@learnique.com', email='guinea@learnique.com',
+            password='whatever123', role='STUDENT',
+        )
+        last = None
+        for _ in range(11):  # login scope is 10/hour
+            last = self.client.post('/api/auth/login/', {
+                'username': 'guinea@learnique.com', 'password': 'wrongpass123',
+            })
+        self.assertEqual(last.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
+        self.assertIn('Too many login attempts', last.data['error'])
+        self.assertIn('minute', last.data['error'])
+
+
 class AdminSetupTests(TestCase):
     """POST /api/auth/admin-setup/ -- dynamic, secret-code admin promotion."""
 
