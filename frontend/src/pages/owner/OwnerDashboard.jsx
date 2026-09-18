@@ -1,32 +1,22 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 import { Link } from 'react-router-dom';
 
 export default function OwnerDashboard() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Frontend-only redirect check as UX fallback (Security bounds are on API)
-    if (!user || user.role !== 'ADMIN') navigate('/');
-    else {
-      api.get('/owner/stats/')
-         .then(res => setStats(res.data))
-         .catch(console.error)
-         .finally(() => setLoading(false));
-    }
-  }, [user, navigate]);
+    api.get('/owner/stats/')
+       .then((res) => setStats(res.data))
+       .catch(console.error)
+       .finally(() => setLoading(false));
+  }, []);
 
   if (loading) return <div className="text-center py-20 dark:text-white">Loading Owner Console...</div>;
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">

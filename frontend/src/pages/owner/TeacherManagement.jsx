@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 export default function OwnerTeachers() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,10 +14,6 @@ export default function OwnerTeachers() {
   const [subjects, setSubjects] = useState([]);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
 
     const loadData = async () => {
       try {
@@ -38,7 +32,7 @@ export default function OwnerTeachers() {
     };
 
     loadData();
-  }, [user, navigate]);
+  }, []);
 
   const filteredTeachers = teachers.filter(teacher => {
     if (filters.search) {
@@ -88,10 +82,6 @@ export default function OwnerTeachers() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading teachers...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">

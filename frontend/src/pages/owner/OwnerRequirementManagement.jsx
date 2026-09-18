@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
 import { Search, Filter, ChevronDown, ChevronUp, Clock, CheckCircle, XCircle, AlertCircle, CheckCircle2 } from 'lucide-react';
 
@@ -33,7 +32,6 @@ const STATUS_OPTIONS = [
 ];
 
 export default function OwnerRequirementManagement() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,13 +77,9 @@ export default function OwnerRequirementManagement() {
   }, []);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
     loadRequirements();
     loadFilters();
-  }, [user, navigate, loadRequirements, loadFilters]);
+  }, [loadRequirements, loadFilters]);
 
   const handleSearch = (e) => {
     setSearch(e.target.value);
@@ -113,9 +107,6 @@ export default function OwnerRequirementManagement() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    return <div className="min-h-[85vh] flex items-center justify-center">Access denied</div>;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">

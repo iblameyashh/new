@@ -1,8 +1,15 @@
+import hmac
+import re
+
+from django.conf import settings as django_settings
+from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import permissions, status, viewsets
 from rest_framework.decorators import api_view, action, permission_classes
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from courses.models import ClassLevel, Course, Subject
 from enrollments.models import Enrollment, Review, StudentRequirement
@@ -16,6 +23,27 @@ from .serializers import (
     TeacherProfileSerializer, UserSerializer,
     StudentRequirementSerializer, StudentRequirementCreateSerializer, StudentRequirementAssignSerializer,
 )
+
+
+class LoginThrottleView(TokenObtainPairView):
+    """Login endpoint with per-IP brute-force throttling (rate set in settings).
+
+    Translates the low-level DRF throttle detail into a plain, honest
+    message so a locked-out user isn't left guessing what "2669 seconds"
+    means.
+    """
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = 'login'
+
+    def throttled(self, request, wait):
+        from rest_framework.exceptions import Throttled
+        minutes = max(1, int(wait // 60) + (1 if wait % 60 else 0))
+        raise Throttled(detail={
+            'error': (
+                f'Too many login attempts from this network. '
+                f'Try again in about {minutes} minute' + ('s' if minutes != 1 else '') + '.'
+            )
+        })
 
 
 class IsAdminOrReadOnly(permissions.BasePermission):
@@ -163,6 +191,93 @@ def unread_message_count(request):
     return Response({'count': count})
 
 
+def _client_ip(request):
+    """Best-effort client IP for rate limiting (works behind proxies)."""
+    forwarded = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if forwarded:
+        return forwarded.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', 'unknown')
+
+
+_EMAIL_RE = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+
+@api_view(['POST'])
+@permission_classes([permissions.AllowAny])
+def admin_setup(request):
+    """
+    Dynamic owner/admin promotion -- no deploy or DB shell needed.
+
+    The secret code lives ONLY in the backend .env (ADMIN_SETUP_CODE) and is
+    never exposed to any user. Anyone who somehow knows BOTH an email/password
+    combination AND this secret code can claim admin for that account; without
+    the code this endpoint is unusable and reveals nothing.
+
+    Body: { "code": "<ADMIN_SETUP_CODE>", "email": "you@mail.com",
+            "password": "<password for that account>" }
+
+    - Account exists -> it is promoted to ADMIN (password verified).
+    - Account does not exist -> a new ADMIN is created with the given password.
+    """
+    ip = _client_ip(request)
+    attempts_key = f'admin_setup_attempts_{ip}'
+    attempts = cache.get(attempts_key, 0)
+    if attempts >= 5:
+        return Response(
+            {'error': 'Too many attempts. Please try again in an hour.'},
+            status=status.HTTP_429_TOO_MANY_REQUESTS,
+        )
+
+    secret = getattr(django_settings, 'ADMIN_SETUP_CODE', '')
+    code = str(request.data.get('code', '')).strip()
+    email = str(request.data.get('email', '')).strip().lower()
+    password = str(request.data.get('password', ''))
+    generic_error = Response(
+        {'error': 'Invalid setup code, email or password.'},
+        status=status.HTTP_400_BAD_REQUEST,
+    )
+
+    # Never reveal whether the code, the account or the password was wrong.
+    if (
+        not secret
+        or not code
+        or not email
+        or not _EMAIL_RE.match(email)
+        or len(password) < 8
+    ):
+        cache.set(attempts_key, attempts + 1, 3600)
+        return generic_error
+    if not hmac.compare_digest(code, secret):
+        cache.set(attempts_key, attempts + 1, 3600)
+        return generic_error
+
+    cache.delete(attempts_key)
+    with transaction.atomic():
+        user = User.objects.filter(email__iexact=email).first()
+        if user is None:
+            user = User.objects.create_user(
+                username=email,
+                email=email,
+                password=password,
+                first_name=str(request.data.get('first_name', '')).strip(),
+                last_name=str(request.data.get('last_name', '')).strip(),
+            )
+        else:
+            if not user.check_password(password):
+                cache.set(attempts_key, attempts + 1, 3600)
+                return generic_error
+        user.role = 'ADMIN'
+        user.is_staff = True
+        user.is_superuser = True
+        user.is_active = True
+        user.save(update_fields=['role', 'is_staff', 'is_superuser', 'is_active'])
+
+    return Response({
+        'message': 'Admin access granted. You can now open the Owner Portal.',
+        'email': user.email,
+    }, status=status.HTTP_200_OK)
+
+
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def register(request):
@@ -209,6 +324,7 @@ def me(request):
         data['student_profile'] = None
     else:
         data['student_profile'] = None; data['teacher_profile'] = None
+    data['is_admin'] = bool(request.user.is_staff or request.user.is_superuser or request.user.role == 'ADMIN')
     return Response(data)
 
 

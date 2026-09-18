@@ -4,7 +4,7 @@ from .views import (
     CourseViewSet, TeacherViewSet, StudentViewSet, EnrollmentViewSet, ReviewViewSet,
     ConversationViewSet, MessageViewSet, CourseLearningViewSet, AssignmentViewSet,
     SubjectViewSet, ClassLevelViewSet, me, register, unread_message_count,
-    password_change, mark_lesson_complete, submit_assignment,
+    password_change, mark_lesson_complete, submit_assignment, admin_setup,
     StudentRequirementViewSet, TeacherMatchingViewSet,
 )
 from chatbot.views import chat
@@ -40,6 +40,7 @@ urlpatterns = [
     path('messages/unread/', unread_message_count, name='unread-message-count'),
     path('auth/me/', me, name='auth-me'),
     path('auth/register/', register, name='auth-register'),
+    path('auth/admin-setup/', admin_setup, name='auth-admin-setup'),
     path('auth/password-change/', password_change, name='password-change'),
     path('ai/chat/', chat, name='ai-chat'),
     path('courses/<int:course_pk>/modules/', CourseLearningViewSet.as_view({'get': 'list'}), name='course-modules'),

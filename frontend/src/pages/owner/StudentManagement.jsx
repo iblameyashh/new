@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 export default function OwnerStudents() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,10 +14,6 @@ export default function OwnerStudents() {
   const [classLevels, setClassLevels] = useState([]);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
 
     const loadData = async () => {
       try {
@@ -38,15 +32,16 @@ export default function OwnerStudents() {
     };
 
     loadData();
-  }, [user, navigate]);
+  }, []);
 
   const filteredStudents = students.filter(student => {
+    const user = student.user || {};
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      const matchesName = student.user.first_name.toLowerCase().includes(searchTerm) ||
-                         student.user.last_name.toLowerCase().includes(searchTerm) ||
-                         student.user.email.toLowerCase().includes(searchTerm) ||
-                         student.student_id.toLowerCase().includes(searchTerm);
+      const matchesName = (user.first_name || '').toLowerCase().includes(searchTerm) ||
+                         (user.last_name || '').toLowerCase().includes(searchTerm) ||
+                         (user.email || '').toLowerCase().includes(searchTerm) ||
+                         (student.student_id || '').toLowerCase().includes(searchTerm);
       if (!matchesName) return false;
     }
 
@@ -54,7 +49,7 @@ export default function OwnerStudents() {
       return false;
     }
 
-    if (filters.status && student.user.is_active !== (filters.status === 'active')) {
+    if (filters.status && user.is_active !== (filters.status === 'active')) {
       return false;
     }
 
@@ -91,10 +86,6 @@ export default function OwnerStudents() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading students...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">
@@ -102,12 +93,7 @@ export default function OwnerStudents() {
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Student Management</h1>
           <div className="flex space-x-3">
-            <button
-              onClick={() => navigate('/owner/students/add')}
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover font-semibold transition-colors"
-            >
-              Add New Student
-            </button>
+            {/* Students self-register from the public site; no manual add flow. */}
           </div>
         </div>
 
@@ -204,7 +190,7 @@ export default function OwnerStudents() {
                     </span>
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => handleToggleStatus(student.id, student.user.is_active)}
+                        onClick={() => handleToggleStatus(student.id, student.user?.is_active)}
                         className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                         title={student.user.is_active ? 'Deactivate' : 'Activate'}
                       >

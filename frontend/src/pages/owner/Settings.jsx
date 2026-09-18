@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 export default function OwnerSettings() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState({
     siteName: '',
@@ -25,10 +21,6 @@ export default function OwnerSettings() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
 
     const loadSettings = async () => {
       try {
@@ -44,7 +36,7 @@ export default function OwnerSettings() {
     };
 
     loadSettings();
-  }, [user, navigate]);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -81,10 +73,6 @@ export default function OwnerSettings() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading settings...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">

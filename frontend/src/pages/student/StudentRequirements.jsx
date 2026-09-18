@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
 import { Plus, MessageSquare, Clock, CheckCircle, XCircle, AlertCircle, CheckCircle2 } from 'lucide-react';
 
@@ -23,7 +22,6 @@ const statusIcons = {
 };
 
 export default function StudentRequirements() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [requirements, setRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,10 +29,6 @@ export default function StudentRequirements() {
 
   useEffect(() => {
     const loadRequirements = async () => {
-      if (!user || user.role !== 'STUDENT') {
-        navigate('/');
-        return;
-      }
       try {
         const res = await api.get('/requirements/');
         setRequirements(res.data);
@@ -46,15 +40,12 @@ export default function StudentRequirements() {
       }
     };
     loadRequirements();
-  }, [user, navigate]);
+  }, [navigate]);
 
   if (loading) {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading...</div>;
   }
 
-  if (!user || user.role !== 'STUDENT') {
-    return <div className="min-h-[85vh] flex items-center justify-center">Please log in as a student</div>;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">

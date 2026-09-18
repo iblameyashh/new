@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 export default function OwnerReviews() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,10 +14,6 @@ export default function OwnerReviews() {
   const [courses, setCourses] = useState([]);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
 
     const loadData = async () => {
       try {
@@ -38,20 +32,22 @@ export default function OwnerReviews() {
     };
 
     loadData();
-  }, [user, navigate]);
+  }, []);
 
   const filteredReviews = reviews.filter(review => {
+    const studentUser = review.student?.user || {};
+    const course = review.course || {};
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      const matchesStudent = review.student.user.first_name.toLowerCase().includes(searchTerm) ||
-                           review.student.user.last_name.toLowerCase().includes(searchTerm) ||
-                           review.student.student_id.toLowerCase().includes(searchTerm);
-      const matchesCourse = review.course.title.toLowerCase().includes(searchTerm);
-      const matchesReviewText = review.review_text.toLowerCase().includes(searchTerm);
+      const matchesStudent = (studentUser.first_name || '').toLowerCase().includes(searchTerm) ||
+                           (studentUser.last_name || '').toLowerCase().includes(searchTerm) ||
+                           (review.student?.student_id || '').toLowerCase().includes(searchTerm);
+      const matchesCourse = (course.title || '').toLowerCase().includes(searchTerm);
+      const matchesReviewText = (review.review_text || '').toLowerCase().includes(searchTerm);
       if (!matchesStudent && !matchesCourse && !matchesReviewText) return false;
     }
 
-    if (filters.course && review.course.id !== parseInt(filters.course)) {
+    if (filters.course && course.id !== parseInt(filters.course)) {
       return false;
     }
 
@@ -79,23 +75,13 @@ export default function OwnerReviews() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading reviews...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 py-10">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Review Management</h1>
-          <div className="flex space-x-3">
-            <button
-              onClick={() => navigate('/owner/reviews/add')}
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover font-semibold transition-colors"
-            >
-              Add New Review
-            </button>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Review Management</h1>                  <div className="flex space-x-3">
+            {/* Reviews are written by students after enrollment; nothing to add manually. */}
           </div>
         </div>
 
@@ -211,13 +197,6 @@ export default function OwnerReviews() {
                       </div>
                     </div>
                     <div className="flex space-x-2">
-                      <button
-                        onClick={() => navigate(`/owner/reviews/${review.id}/edit`)}
-                        className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                        title="Edit"
-                      >
-                        ✏
-                      </button>
                       <button
                         onClick={() => handleDeleteReview(review.id)}
                         className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors text-red-500 hover:text-red-700"

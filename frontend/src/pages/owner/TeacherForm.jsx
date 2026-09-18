@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 export default function TeacherForm() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = !!id;
@@ -49,17 +47,13 @@ export default function TeacherForm() {
   }, [id, navigate]);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
 
     if (isEditMode) {
       loadTeacherData();
     } else {
       setLoading(false);
     }
-  }, [user, isEditMode, loadTeacherData, navigate]);
+  }, [isEditMode, loadTeacherData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -122,13 +116,20 @@ export default function TeacherForm() {
       }
 
       setSuccessMessage('Teacher saved successfully!');
+      setErrors({});
       setTimeout(() => {
         navigate('/owner/teachers');
       }, 1500);
     } catch (err) {
       console.error(err);
       if (err.response && err.response.data) {
-        setErrors(err.response.data);
+        const data = err.response.data;
+        if (typeof data.error === 'string') {
+          // Server-wide messages (e.g. duplicate email) have nowhere else to go.
+          setErrors({ submit: data.error });
+        } else {
+          setErrors(data);
+        }
       } else {
         setErrors({ submit: 'An error occurred while saving the teacher' });
       }
@@ -139,10 +140,6 @@ export default function TeacherForm() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">
@@ -327,10 +324,12 @@ export default function TeacherForm() {
           </div>
 
           <div className="px-8 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+            {errors.submit && (
+              <p className="mb-3 text-sm text-red-600 dark:text-red-400">{errors.submit}</p>
+            )}
             <button
               type="submit"
               className="w-full px-6 py-3 bg-primary text-white rounded-md hover:bg-primary-hover font-semibold transition-colors disabled:opacity-50"
-              disabled={Object.keys(errors).length > 0}
             >
               {isEditMode ? 'Update Teacher' : 'Create Teacher Account'}
             </button>

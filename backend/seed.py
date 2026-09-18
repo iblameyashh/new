@@ -1,11 +1,45 @@
 import os
+import sys
+
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
+from django.conf import settings
+
 from users.models import User, StudentProfile, TeacherProfile
 from courses.models import Subject, ClassLevel, Course
+
+# OWNER / ADMIN ACCOUNT -- paste your email & password into backend/.env
+# ---------------------------------------------------------------------------
+# Read from environment (backend/.env) so NO credentials ever live in this
+# file. Set ADMIN_SEED_EMAIL / ADMIN_SEED_PASSWORD in .env before running:
+#   python seed.py
+ADMIN_EMAIL = os.environ.get('ADMIN_SEED_EMAIL', '')
+ADMIN_PASSWORD = os.environ.get('ADMIN_SEED_PASSWORD', '')
+
+if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+    print('Admin seed skipped: set ADMIN_SEED_EMAIL and ADMIN_SEED_PASSWORD')
+    print('in backend/.env first (see .env.example). Teachers/students below',
+          'are still seeded.')
+else:
+    admin, created = User.objects.get_or_create(
+        username=ADMIN_EMAIL,
+        defaults={'email': ADMIN_EMAIL, 'role': 'ADMIN'},
+    )
+    admin.role = 'ADMIN'
+    admin.is_staff = True
+    admin.is_superuser = True
+    admin.is_active = True
+    admin.set_password(ADMIN_PASSWORD)
+    admin.save()
+    print(f"Admin ready -> email: {ADMIN_EMAIL} (password from .env)")
+    if not settings.ADMIN_SETUP_CODE:
+        print('Tip: also set ADMIN_SETUP_CODE in backend/.env so you can always')
+        print('     reclaim admin from the /admin-setup page without a shell.')
+
+# ---------------------------------------------------------------------------
 
 # Create teachers
 t1, _ = User.objects.get_or_create(username='john_math', email='john@learnique.edu', first_name='John', last_name='Doe', role='TEACHER')

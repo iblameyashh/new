@@ -20,6 +20,26 @@ from .serializers import (
     StudentRequirementAssignSerializer,
 )
 
+def ensure_email_available(user, new_email):
+    """Reject case-insensitive email collisions with any other account.
+
+    An email swap that collides (even with different letter casing) would
+    silently corrupt logins for both accounts, so owner edits must 400
+    instead of saving. Returns a 400 Response or None.
+    """
+    if (
+        new_email
+        and User.objects.exclude(pk=user.pk)
+        .filter(email__iexact=new_email)
+        .exists()
+    ):
+        return Response(
+            {'error': 'A user with this email already exists.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
+
+
 class OwnerTeacherViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOwner]
     serializer_class = TeacherProfileSerializer
@@ -49,13 +69,18 @@ class OwnerTeacherViewSet(viewsets.ModelViewSet):
         # Handle custom creating of Teacher (User + Profile)
         data = request.data
         try:
-            email = data.get('email')
-            password = data.get('password')
+            email = str(data.get('email', '')).strip().lower()
+            password = str(data.get('password', ''))
             first_name = data.get('first_name', '')
             last_name = data.get('last_name', '')
-            
+
+            if not email or '@' not in email:
+                return Response({'error': 'A valid email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            if len(password) < 8:
+                return Response({'error': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
             # Check if user exists
-            if User.objects.filter(email=email).exists():
+            if User.objects.filter(email__iexact=email).exists():
                 return Response({'error': 'User with this email already exists'}, status=status.HTTP_400_BAD_REQUEST)
                 
             user = User.objects.create_user(
@@ -76,6 +101,9 @@ class OwnerTeacherViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         profile = self.get_object()
         user = profile.user
+        dup = ensure_email_available(user, request.data.get('email'))
+        if dup:
+            return dup
         for field in ('first_name', 'last_name', 'email', 'is_active'):
             if field in request.data:
                 val = request.data.get(field)
@@ -154,6 +182,32 @@ class OwnerStudentViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(user__is_active=is_active)
             
         return queryset
+
+    def update(self, request, *args, **kwargs):
+        # The serializer exposes user fields read-only, so handle the
+        # activate/deactivate + profile edits here (same pattern as teachers).
+        profile = self.get_object()
+        user = profile.user
+        dup = ensure_email_available(user, request.data.get('email'))
+        if dup:
+            return dup
+        for field in ('first_name', 'last_name', 'email', 'is_active'):
+            if field in request.data:
+                val = request.data.get(field)
+                setattr(user, field, val)
+                if field == 'email' and val:
+                    user.username = val
+        user.save()
+        for field in ('class_level',):
+            if field in request.data:
+                setattr(profile, field, request.data.get(field))
+        profile.save()
+        return Response(StudentProfileSerializer(profile).data)
+
+    def perform_destroy(self, instance):
+        # Deleting only the profile would orphan the login account;
+        # delete the user instead (cascades to profile + enrollments).
+        instance.user.delete()
 
 class OwnerEnrollmentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOwner]

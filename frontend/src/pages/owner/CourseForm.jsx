@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axiosConfig';
 
 export default function CourseForm() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = !!id;
@@ -58,10 +56,6 @@ export default function CourseForm() {
   }, [id, navigate]);
 
   useEffect(() => {
-    if (!user || user.role !== 'ADMIN') {
-      navigate('/');
-      return;
-    }
 
     const loadInitialData = async () => {
       try {
@@ -86,7 +80,7 @@ export default function CourseForm() {
     };
 
     loadInitialData();
-  }, [user, isEditMode, loadCourseData, navigate]);
+  }, [isEditMode, loadCourseData]);
 
   const handleImageChange = (e) => {
     if (e.target.files[0]) {
@@ -193,13 +187,27 @@ export default function CourseForm() {
       }
 
       setSuccessMessage('Course saved successfully!');
+      setErrors({});
       setTimeout(() => {
         navigate('/owner/courses');
       }, 1500);
     } catch (err) {
       console.error(err);
       if (err.response && err.response.data) {
-        setErrors(err.response.data);
+        const data = err.response.data;
+        if (typeof data === 'string') {
+          setErrors({ submit: data });
+        } else if (typeof data.error === 'string') {
+          setErrors({ submit: data.error });
+        } else if (typeof data.detail === 'string') {
+          setErrors({ submit: data.detail });
+        } else {
+          // Field-keyed DRF errors; anything the form has no field slot for
+          // is surfaced in the submit banner instead of being swallowed.
+          const known = ['title', 'description', 'price', 'teacherId', 'subjectId', 'classLevelId'];
+          const unmapped = Object.keys(data).filter((k) => !known.includes(k));
+          setErrors({ ...data, ...(unmapped.length ? { submit: unmapped.map((k) => `${k}: ${Array.isArray(data[k]) ? data[k].join(' ') : data[k]}`).join(' · ') } : {}) });
+        }
       } else {
         setErrors({ submit: 'An error occurred while saving the course' });
       }
@@ -210,10 +218,6 @@ export default function CourseForm() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading...</div>;
   }
 
-  if (!user || user.role !== 'ADMIN') {
-    navigate('/');
-    return null;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">
@@ -569,10 +573,12 @@ export default function CourseForm() {
           </div>
 
           <div className="px-8 py-4 bg-gray-50 dark:bg-gray-700 border-t border-gray-200 dark:border-gray-600">
+            {errors.submit && (
+              <p className="mb-3 text-sm text-red-600 dark:text-red-400">{errors.submit}</p>
+            )}
             <button
               type="submit"
               className="w-full px-6 py-3 bg-primary text-white rounded-md hover:bg-primary-hover font-semibold transition-colors disabled:opacity-50"
-              disabled={Object.keys(errors).length > 0}
             >
               {isEditMode ? 'Update Course' : 'Create Course'}
             </button>

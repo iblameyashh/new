@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../api/axiosConfig';
 import { ArrowLeft, Send } from 'lucide-react';
 
 export default function StudentRequirementCreate() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [subjects, setSubjects] = useState([]);
   const [classLevels, setClassLevels] = useState([]);
@@ -34,12 +32,8 @@ export default function StudentRequirementCreate() {
   }, []);
 
   useEffect(() => {
-    if (!user || user.role !== 'STUDENT') {
-      navigate('/');
-      return;
-    }
     loadReferenceData();
-  }, [user, navigate, loadReferenceData]);
+  }, [loadReferenceData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -88,9 +82,6 @@ export default function StudentRequirementCreate() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading...</div>;
   }
 
-  if (!user || user.role !== 'STUDENT') {
-    return <div className="min-h-[85vh] flex items-center justify-center">Please log in as a student</div>;
-  }
 
   return (
     <div className="min-h-[85vh] bg-gray-50 dark:bg-gray-900">

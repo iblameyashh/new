@@ -26,10 +26,6 @@ export default function TeacherDashboard() {
 
   useEffect(() => {
     const loadAssignedStudents = async () => {
-      if (!user || user.role !== 'TEACHER') {
-        navigate('/');
-        return;
-      }
       try {
         const res = await api.get('/requirements/');
         setRequirements(res.data);
@@ -47,10 +43,6 @@ export default function TeacherDashboard() {
     return <div className="min-h-[85vh] flex items-center justify-center text-gray-500">Loading...</div>;
   }
 
-  if (!user || user.role !== 'TEACHER') {
-    navigate('/');
-    return null;
-  }
 
   const activeRequirements = requirements.filter(r => r.status === 'ACTIVE' || r.status === 'APPROVED');
 
