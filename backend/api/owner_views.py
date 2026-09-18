@@ -20,6 +20,26 @@ from .serializers import (
     StudentRequirementAssignSerializer,
 )
 
+def ensure_email_available(user, new_email):
+    """Reject case-insensitive email collisions with any other account.
+
+    An email swap that collides (even with different letter casing) would
+    silently corrupt logins for both accounts, so owner edits must 400
+    instead of saving. Returns a 400 Response or None.
+    """
+    if (
+        new_email
+        and User.objects.exclude(pk=user.pk)
+        .filter(email__iexact=new_email)
+        .exists()
+    ):
+        return Response(
+            {'error': 'A user with this email already exists.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    return None
+
+
 class OwnerTeacherViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOwner]
     serializer_class = TeacherProfileSerializer
@@ -81,6 +101,9 @@ class OwnerTeacherViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         profile = self.get_object()
         user = profile.user
+        dup = ensure_email_available(user, request.data.get('email'))
+        if dup:
+            return dup
         for field in ('first_name', 'last_name', 'email', 'is_active'):
             if field in request.data:
                 val = request.data.get(field)
@@ -165,6 +188,9 @@ class OwnerStudentViewSet(viewsets.ModelViewSet):
         # activate/deactivate + profile edits here (same pattern as teachers).
         profile = self.get_object()
         user = profile.user
+        dup = ensure_email_available(user, request.data.get('email'))
+        if dup:
+            return dup
         for field in ('first_name', 'last_name', 'email', 'is_active'):
             if field in request.data:
                 val = request.data.get(field)

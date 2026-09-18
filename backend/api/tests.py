@@ -316,3 +316,62 @@ class OwnerStudentActionsTests(TestCase):
         })
         self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('8 characters', res.data.get('error', ''))
+
+    def test_owner_student_update_rejects_duplicate_email(self):
+        res = self.client.patch(
+            f'/api/owner/students/{self.profile.id}/',
+            {'email': 'ADMIN2@learnique.com'},  # the admin's own email, case-swapped
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('already exists', res.data['error'])
+        self.student_user.refresh_from_db()
+        self.assertEqual(self.student_user.email, 's2@learnique.com')
+
+
+class OwnerTeacherUpdateTests(TestCase):
+    """PATCH /api/owner/teachers/<id>/ must reject email collisions."""
+
+    def setUp(self):
+        self.client = APIClient()
+        self.admin = User.objects.create_superuser(
+            username='admin3@learnique.com', email='admin3@learnique.com',
+            password='adminpassword123', role='ADMIN',
+        )
+        self.teacher_user = User.objects.create_user(
+            username='teacher3@learnique.com', email='teacher3@learnique.com',
+            password='teacherpass123', role='TEACHER',
+        )
+        self.teacher_profile = TeacherProfile.objects.create(
+            user=self.teacher_user, qualification='M.Sc', experience=5,
+        )
+        self.other_user = User.objects.create_user(
+            username='taken@learnique.com', email='taken@learnique.com',
+            password='whatever123', role='STUDENT',
+        )
+        self.client.force_authenticate(user=self.admin)
+
+    def test_update_rejects_case_insensitive_duplicate_email(self):
+        res = self.client.patch(
+            f'/api/owner/teachers/{self.teacher_profile.id}/',
+            {'email': 'TAKEN@learnique.com'},
+        )
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('already exists', res.data['error'])
+        self.teacher_user.refresh_from_db()
+        self.assertEqual(self.teacher_user.email, 'teacher3@learnique.com')
+
+    def test_update_to_own_current_email_is_allowed(self):
+        res = self.client.patch(
+            f'/api/owner/teachers/{self.teacher_profile.id}/',
+            {'email': 'teacher3@learnique.com'},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+    def test_update_to_fresh_email_is_allowed(self):
+        res = self.client.patch(
+            f'/api/owner/teachers/{self.teacher_profile.id}/',
+            {'email': 'fresh-move@learnique.com'},
+        )
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.teacher_user.refresh_from_db()
+        self.assertEqual(self.teacher_user.email, 'fresh-move@learnique.com')

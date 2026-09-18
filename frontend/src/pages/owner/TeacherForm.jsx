@@ -123,7 +123,13 @@ export default function TeacherForm() {
     } catch (err) {
       console.error(err);
       if (err.response && err.response.data) {
-        setErrors(err.response.data);
+        const data = err.response.data;
+        if (typeof data.error === 'string') {
+          // Server-wide messages (e.g. duplicate email) have nowhere else to go.
+          setErrors({ submit: data.error });
+        } else {
+          setErrors(data);
+        }
       } else {
         setErrors({ submit: 'An error occurred while saving the teacher' });
       }

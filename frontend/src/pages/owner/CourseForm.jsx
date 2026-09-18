@@ -194,7 +194,20 @@ export default function CourseForm() {
     } catch (err) {
       console.error(err);
       if (err.response && err.response.data) {
-        setErrors(err.response.data);
+        const data = err.response.data;
+        if (typeof data === 'string') {
+          setErrors({ submit: data });
+        } else if (typeof data.error === 'string') {
+          setErrors({ submit: data.error });
+        } else if (typeof data.detail === 'string') {
+          setErrors({ submit: data.detail });
+        } else {
+          // Field-keyed DRF errors; anything the form has no field slot for
+          // is surfaced in the submit banner instead of being swallowed.
+          const known = ['title', 'description', 'price', 'teacherId', 'subjectId', 'classLevelId'];
+          const unmapped = Object.keys(data).filter((k) => !known.includes(k));
+          setErrors({ ...data, ...(unmapped.length ? { submit: unmapped.map((k) => `${k}: ${Array.isArray(data[k]) ? data[k].join(' ') : data[k]}`).join(' · ') } : {}) });
+        }
       } else {
         setErrors({ submit: 'An error occurred while saving the course' });
       }
